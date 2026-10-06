@@ -1,0 +1,131 @@
+version: '3.8'
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  db_data:
+  wp_data:
+  grafana_data:
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: wp_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Strong_Root_Password_2026!
+      MYSQL_DATABASE: wordpress_db
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: Strong_User_Password_2026!
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - backend-net
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wp_app
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress_db
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: Strong_User_Password_2026!
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - frontend-net
+      - backend-net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: wp_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    networks:
+      - frontend-net
+      - backend-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: wp_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - frontend-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: wp_prometheus
+    restart: always
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - frontend-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wp_grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - frontend-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: wp_cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - frontend-net
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: wp_nginx_exporter
+    restart: always
+    command:
+      - -nginx.scrape-uri=http://nginx:8080/stub_status
+    networks:
+      - frontend-net
+
+  loki:
+    image: grafana/loki:latest
+    container_name: wp_loki
+    restart: always
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - frontend-net
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: wp_promtail
+    restart: always
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - frontend-net

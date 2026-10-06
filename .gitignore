@@ -1,0 +1,16 @@
+# Bỏ qua dữ liệu lưu trữ của Docker (rất nặng, không push lên Git)
+db_data/
+wp_data/
+
+# Bỏ qua các file môi trường chứa mật khẩu riêng (nếu có)
+.env
+
+# Bỏ qua các file hệ thống và thư mục tạm của IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Bỏ qua các file backup database
+*.sql
+*.tar.gz
